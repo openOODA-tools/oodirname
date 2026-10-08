@@ -1,0 +1,91 @@
+// # Command-Line Options Parser for Dirname
+//
+// Logline: Parses POSIX flags and positional path arguments into typed DirnameOpts.
+//
+// Setup: Implements POSIX flag handling with extensions for zero delimiter, JSON Lines, and MCP.
+//
+// Beats:
+//   1. Define DirnameOpts holding execution configuration.
+//   2. Iterate argument list extracting flags and operand paths.
+//   3. Configure output delimiters and execution modes.
+//   4. Deliver completed options struct to command dispatcher.
+
+pub type DirnameOpts = struct {
+    zero_mode: Bool,
+    json_mode: Bool,
+    demo_mode: Bool,
+    mcp_mode: Bool,
+    show_help: Bool,
+    show_version: Bool,
+    paths: List[String],
+    color_mode: String,
+    theme_name: String
+};
+
+pub fn default_dirname_opts() -> DirnameOpts {
+    return DirnameOpts {
+        zero_mode: false,
+        json_mode: false,
+        demo_mode: false,
+        mcp_mode: false,
+        show_help: false,
+        show_version: false,
+        paths: list_new(),
+        color_mode: "auto",
+        theme_name: "",
+    };
+}
+
+pub fn parse_cli_args(args: List[String]) -> DirnameOpts {
+    let mut opts: DirnameOpts = default_dirname_opts();
+    let n: Int = list_len(args);
+    let mut i: Int = 0;
+
+    while i < n {
+        let arg: String = list_get(args, i);
+
+        if arg == "-h" || arg == "--help" {
+            opts.show_help = true;
+        } else if arg == "-v" || arg == "--version" {
+            opts.show_version = true;
+        } else if arg == "-z" || arg == "--zero" {
+            opts.zero_mode = true;
+        } else if arg == "-j" || arg == "--json" {
+            opts.json_mode = true;
+        } else if arg == "-D" || arg == "--demo" {
+            opts.demo_mode = true;
+        } else if arg == "--mcp" {
+            opts.mcp_mode = true;
+        } else if arg == "--color" {
+            if i + 1 < n {
+                i = i + 1;
+                opts.color_mode = list_get(args, i);
+            }
+        } else if str_starts_with(arg, "--color=") {
+            opts.color_mode = str_slice(arg, 8, chars_len(arg));
+        } else if arg == "--theme" {
+            if i + 1 < n {
+                i = i + 1;
+                opts.theme_name = list_get(args, i);
+            }
+        } else if str_starts_with(arg, "--theme=") {
+            opts.theme_name = str_slice(arg, 8, chars_len(arg));
+        } else if arg == "--" {
+            i = i + 1;
+            while i < n {
+                opts.paths = list_push(opts.paths, list_get(args, i));
+                i = i + 1;
+            }
+            return opts;
+        } else if str_starts_with(arg, "-") && chars_len(arg) > 1 {
+            // Unrecognized option flag
+            opts.paths = list_push(opts.paths, arg);
+        } else {
+            opts.paths = list_push(opts.paths, arg);
+        }
+
+        i = i + 1;
+    }
+
+    return opts;
+}

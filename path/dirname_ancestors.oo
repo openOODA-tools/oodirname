@@ -1,0 +1,40 @@
+// # Path Ancestor Generator
+//
+// Logline: Traces hierarchical ancestor chain from leaf path to root directory or working dot.
+//
+// Setup: Repeatedly applies POSIX dirname resolution until boundary sentinel is reached.
+//
+// Beats:
+//   1. Resolve immediate parent directory for input path.
+//   2. Iteratively climb directory tree storing ancestor segments.
+//   3. Terminate traversal upon encountering root boundary (/) or relative baseline (.).
+//   4. Return ordered list of ancestor directory paths.
+
+import "path/dirname_posix.oo";
+
+pub fn compute_ancestor_chain(path: String) -> List[String] {
+    let mut chain: List[String] = list_new();
+    let mut curr: String = posix_dirname(path);
+    chain = list_push(chain, curr);
+
+    let mut depth: Int = 0;
+    while depth < 128 {
+        if curr == "/" || curr == "." || curr == "" {
+            return chain;
+        }
+        let next_parent: String = posix_dirname(curr);
+        if next_parent == curr {
+            return chain;
+        }
+        curr = next_parent;
+        chain = list_push(chain, curr);
+        depth = depth + 1;
+    }
+
+    return chain;
+}
+
+pub fn count_path_depth(path: String) -> Int {
+    let ancestors: List[String] = compute_ancestor_chain(path);
+    return list_len(ancestors);
+}

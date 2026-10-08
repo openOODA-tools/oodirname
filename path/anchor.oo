@@ -1,0 +1,66 @@
+// # Path Module Anchor
+//
+// Logline: Unified substrate verification anchor for oodirname path parsing engines.
+//
+// Setup: Demands zero ambient authority, validates IEEE Std 1003.1 dirname and basename algorithms.
+//
+// Beats:
+//   1. Validate POSIX dirname boundary conditions (root, dot, trailing slashes, empty string).
+//   2. Validate split_path_components and posix_basename extraction.
+//   3. Validate compute_ancestor_chain and path depth calculation.
+//   4. Return boolean pass/fail status for path module test suite.
+
+import "path/dirname_posix.oo";
+import "path/dirname_split.oo";
+import "path/dirname_ancestors.oo";
+
+pub fn run_path_tests() -> Bool {
+    return test_path();
+}
+
+pub fn test_path() -> Bool {
+    // 1. POSIX standard dirname test suite
+    if posix_dirname("") != "." { return false; }
+    if posix_dirname("/") != "/" { return false; }
+    if posix_dirname("//") != "/" { return false; }
+    if posix_dirname("///") != "/" { return false; }
+    if posix_dirname("/usr") != "/" { return false; }
+    if posix_dirname("/usr/") != "/" { return false; }
+    if posix_dirname("/usr/lib") != "/usr" { return false; }
+    if posix_dirname("/usr/lib/") != "/usr" { return false; }
+    if posix_dirname("usr") != "." { return false; }
+    if posix_dirname("usr/") != "." { return false; }
+    if posix_dirname("usr/lib") != "usr" { return false; }
+    if posix_dirname("usr/lib/") != "usr" { return false; }
+    if posix_dirname(".") != "." { return false; }
+    if posix_dirname("./") != "." { return false; }
+    if posix_dirname("..") != "." { return false; }
+    if posix_dirname("a//b") != "a" { return false; }
+    if posix_dirname("///a///") != "/" { return false; }
+
+    // 2. Basename and split tests
+    if posix_basename("/usr/lib") != "lib" { return false; }
+    if posix_basename("/usr/lib/") != "lib" { return false; }
+    if posix_basename("/usr") != "usr" { return false; }
+    if posix_basename("/") != "/" { return false; }
+    if posix_basename("") != "" { return false; }
+
+    let comps: PathComponents = split_path_components("/var/log/syslog");
+    if comps.dir != "/var/log" { return false; }
+    if comps.base != "syslog" { return false; }
+
+    // 3. Ancestor chain tests
+    let chain: List[String] = compute_ancestor_chain("/a/b/c");
+    if list_len(chain) != 3 { return false; }
+    if list_get(chain, 0) != "/a/b" { return false; }
+    if list_get(chain, 1) != "/a" { return false; }
+    if list_get(chain, 2) != "/" { return false; }
+
+    let rel_chain: List[String] = compute_ancestor_chain("x/y/z");
+    if list_len(rel_chain) != 3 { return false; }
+    if list_get(rel_chain, 0) != "x/y" { return false; }
+    if list_get(rel_chain, 1) != "x" { return false; }
+    if list_get(rel_chain, 2) != "." { return false; }
+
+    return true;
+}

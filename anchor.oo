@@ -1,13 +1,29 @@
-// # oodirname Root Anchor
+// # Aggregate Root Substrate Anchor
 //
-// Logline: Top-level anchor re-exporting options, core logic, render, and ipc subsystems.
+// Logline: Unified entry point for oodirname module test suite execution across path, render, and ipc.
 //
-// Setup: Pure shim re-exporting all oodirname subsystem anchors.
+// Setup: Demands zero ambient authority, links all functional module anchors together.
 //
 // Beats:
-//   1. Re-export options parsing subsystem.
-//   2. Re-export core oodirname execution engine.
-//   3. Re-export render formatting subsystem.
-//   4. Re-export Model Context Protocol (MCP) IPC subsystem.
+//   1. Execute path module anchor tests for POSIX dirname and basename compliance.
+//   2. Execute render module anchor tests for text, zero mode, and JSON Lines.
+//   3. Execute IPC module anchor tests for CLI options and streaming MCP protocol.
+//   4. Return aggregate boolean pass/fail status.
 
-import "main.oo";
+import "path/anchor.oo";
+import "render/anchor.oo";
+import "ipc/anchor.oo";
+
+pub fn run_all_tests() -> Bool {
+    if !run_path_tests() {
+        return false;
+    }
+    if !run_render_tests() {
+        return false;
+    }
+    if !run_ipc_tests() {
+        return false;
+    }
+    return true;
+}
+

@@ -1,0 +1,48 @@
+// # Render Module Anchor
+//
+// Logline: Unified substrate verification anchor for oodirname output rendering engines.
+//
+// Setup: Validates plain text formatting, NUL-terminated zero mode, JSON Lines, and synthetic showcase.
+//
+// Beats:
+//   1. Assert plain text and zero delimiter dirname formatting.
+//   2. Assert structured JSON Lines generation with component metadata.
+//   3. Assert synthetic demonstration matrix output in text and JSON modes.
+//   4. Return boolean pass/fail status for render module test suite.
+
+import "render/render_plain.oo";
+import "render/render_json.oo";
+import "render/synthetic_demo.oo";
+
+pub fn run_render_tests() -> Bool {
+    return test_render();
+}
+
+pub fn test_render() -> Bool {
+    // 1. Plain formatting test
+    let plain: String = format_single_dirname("/usr/local/bin", false);
+    if plain != "/usr/local\n" { return false; }
+
+    let zero: String = format_single_dirname("/usr/local/bin", true);
+    if chars_len(zero) != 11 { return false; }
+    if byte_at(zero, 10) != 0 { return false; }
+
+    // 2. JSON Lines formatting test
+    let json_line: String = format_json_line("/etc/systemd/system");
+    if !str_contains(json_line, "\"dirname\":\"/etc/systemd\"") { return false; }
+    if !str_contains(json_line, "\"basename\":\"system\"") { return false; }
+    if !str_contains(json_line, "\"is_root\":false") { return false; }
+
+    let root_json: String = format_json_line("/var");
+    if !str_contains(root_json, "\"is_root\":true") { return false; }
+
+    // 3. Synthetic demo test
+    let demo_txt: String = run_synthetic_demo(false);
+    if !str_contains(demo_txt, "oodirname: Sovereign POSIX Dirname Showcase") { return false; }
+    if !str_contains(demo_txt, "INPUT PATH") { return false; }
+
+    let demo_json: String = run_synthetic_demo(true);
+    if !str_contains(demo_json, "\"path\":\"/usr/bin/oodirname\"") { return false; }
+
+    return true;
+}

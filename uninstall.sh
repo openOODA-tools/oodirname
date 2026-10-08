@@ -4,7 +4,7 @@
 # "Removes oodirname binary, package installations, and cache."
 #
 # Usage:
-#   curl -fsSL https://openooda-toodirname.github.io/oodirname/uninstall.sh | bash
+#   curl -fsSL https://openOODA-tools.github.io/oodirname/uninstall.sh | bash
 #   or: ./uninstall.sh [options]
 #
 # Options:

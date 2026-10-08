@@ -1,0 +1,39 @@
+// # Plain Text Dirname Formatter
+//
+// Logline: Formats resolved parent directory paths with newline or NUL byte delimiters.
+//
+// Setup: Implements POSIX standard text output and -z/--zero NUL byte streaming.
+//
+// Beats:
+//   1. Determine record terminator (newline or NUL).
+//   2. Concatenate resolved directory paths with selected terminator.
+//   3. Return formatted output string for standard output stream.
+
+import "path/dirname_posix.oo";
+
+pub fn format_dirname_output(paths: List[String], zero_terminated: Bool) -> String {
+    let delim: String = if zero_terminated {
+        bytes_to_str(bytes_push(bytes_new(), 0))
+    } else {
+        "\n"
+    };
+
+    let n: Int = list_len(paths);
+    let mut out: String = "";
+    let mut i: Int = 0;
+    while i < n {
+        let p: String = list_get(paths, i);
+        let d: String = posix_dirname(p);
+        out = out + d + delim;
+        i = i + 1;
+    }
+    return out;
+}
+
+pub fn format_single_dirname(path: String, zero_terminated: Bool) -> String {
+    let d: String = posix_dirname(path);
+    if zero_terminated {
+        return d + bytes_to_str(bytes_push(bytes_new(), 0));
+    }
+    return d + "\n";
+}

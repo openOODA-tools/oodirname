@@ -1,32 +1,48 @@
 // # oodirname Main Entry Point
 //
-// Logline: Extracts parent directory portion from path strings adhering to POSIX standards.
+// Logline: Extracts parent directory component from path strings adhering to POSIX standards.
 //
-// Setup: Demands explicit capability tokens and standard argument list.
+// Setup: Demands explicit capability tokens &FsReadCap, &ProcessCap, and &EnvCap under zero ambient authority.
 //
 // Beats:
-//   1. Parse command-line options and dispatch --help, --version, or --mcp.
-//   2. Execute capability-bounded oodirname operations.
-//   3. Format and output structured results to standard output.
+//   1. Parse command-line options and dispatch --help, --version, --test, or --mcp.
+//   2. Ingest path operands from arguments and handle -z/--zero NUL delimiter mode.
+//   3. Dispatch path transformations and output plain text, JSON Lines, or synthetic showcase.
+//   4. Deliver exit code indicating success or operand failure.
+
+import "render/render_plain.oo";
+import "render/render_json.oo";
+import "render/synthetic_demo.oo";
+import "ipc/cli_options.oo";
+import "ipc/mcp_server.oo";
+import "anchor.oo";
 
 fn render_help() -> String {
-    return "oodirname 0.1.0 (openOODA sovereign files & navigation)\n"
-        + "usage: oodirname [options] [ARGUMENTS]...\n\n"
+    return "oodirname 0.2.0 (openOODA sovereign path & string)\n"
+        + "usage: oodirname [options] NAME...\n\n"
         + "Extracts parent directory portion from path strings adhering to POSIX standards.\n\n"
         + "Options:\n"
-        + "  -h, --help           display this help and exit\n"
-        + "  -v, --version        output version information and exit\n"
-        + "      --json           output formatted as JSON Lines\n"
+        + "  -z, --zero           end each output line with NUL, not newline\n"
+        + "  -j, --json           output formatted as JSON Lines\n"
+        + "  -D, --demo           synthetic POSIX dirname demonstration showcase\n"
         + "      --color <WHEN>   colorize output: auto, always, never [default: auto]\n"
         + "      --theme <NAME>   override active oote palette\n"
-        + "      --mcp            run as Model Context Protocol stdio server\n";
+        + "      --mcp            run as Model Context Protocol stdio server\n"
+        + "      --test           run internal verification anchor suite\n"
+        + "  -h, --help           display this help and exit\n"
+        + "  -v, --version        output version information and exit\n";
 }
 
 fn render_version() -> String {
-    return "oodirname 0.1.0 (openOODA sovereign files & navigation)\n";
+    return "oodirname 0.2.0 (openOODA sovereign oodirname 0.2.0)\n";
 }
 
-fn main(args: List[String]) -> Int {
+pub fn main(
+    fr: &FsReadCap,
+    pr: &ProcessCap,
+    env: &EnvCap,
+    args: List[String]
+) -> Int {
     let num_args: Int = list_len(args);
     let mut i: Int = 0;
 
@@ -40,13 +56,40 @@ fn main(args: List[String]) -> Int {
             print(render_version());
             return 0;
         }
+        if arg == "--test" {
+            if run_all_tests() {
+                println("oodirname: internal anchor tests PASSED");
+                return 0;
+            } else {
+                println("oodirname: internal anchor tests FAILED");
+                return 1;
+            }
+        }
         if arg == "--mcp" {
-            print("{\"jsonrpc\":\"2.0\",\"result\":{\"status\":\"ready\",\"tool\":\"oodirname\"}}\n");
+            run_mcp_server(fr);
             return 0;
         }
         i = i + 1;
     }
 
-    print("oodirname: sovereign capability-bounded utility ready\n");
+    let opts: DirnameOpts = parse_cli_args(args);
+
+    if opts.demo_mode {
+        print(run_synthetic_demo(opts.json_mode));
+        return 0;
+    }
+
+    let num_paths: Int = list_len(opts.paths);
+    if num_paths == 0 {
+        print("oodirname: missing operand\nTry 'oodirname --help' for more information.\n");
+        return 1;
+    }
+
+    if opts.json_mode {
+        print(format_json_batch(opts.paths));
+        return 0;
+    }
+
+    print(format_dirname_output(opts.paths, opts.zero_mode));
     return 0;
 }

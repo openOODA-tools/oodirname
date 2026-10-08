@@ -1,0 +1,64 @@
+// # Path Component Splitter
+//
+// Logline: Splits path string into parent directory and base filename components.
+//
+// Setup: Uses POSIX dirname algorithm and complementary basename extraction.
+//
+// Beats:
+//   1. Compute parent directory via posix_dirname.
+//   2. Compute basename component from trailing path segment.
+//   3. Return PathComponents struct containing dir and base.
+
+import "path/dirname_posix.oo";
+
+pub type PathComponents = struct {
+    dir: String,
+    base: String,
+    original: String
+};
+
+pub fn posix_basename(path: String) -> String {
+    let n: Int = chars_len(path);
+    if n == 0 {
+        return "";
+    }
+
+    let mut end: Int = n - 1;
+    while end >= 0 && byte_at(path, end) == 47 {
+        end = end - 1;
+    }
+
+    if end < 0 {
+        return "/";
+    }
+
+    let trimmed: String = str_slice(path, 0, end + 1);
+    let trimmed_len: Int = chars_len(trimmed);
+
+    let mut slash_idx: Int = -1;
+    let mut i: Int = trimmed_len - 1;
+    while i >= 0 {
+        if byte_at(trimmed, i) == 47 {
+            slash_idx = i;
+            i = -1;
+        } else {
+            i = i - 1;
+        }
+    }
+
+    if slash_idx < 0 {
+        return trimmed;
+    }
+
+    return str_slice(trimmed, slash_idx + 1, trimmed_len);
+}
+
+pub fn split_path_components(path: String) -> PathComponents {
+    let d: String = posix_dirname(path);
+    let b: String = posix_basename(path);
+    return PathComponents {
+        dir: d,
+        base: b,
+        original: path,
+    };
+}

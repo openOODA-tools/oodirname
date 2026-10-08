@@ -1,0 +1,164 @@
+// # Streaming MCP Server for Dirname
+//
+// Logline: JSON-RPC 2.0 stdio server providing capability-bounded POSIX dirname and path tools.
+//
+// Setup: Bridges standard input/output streaming protocol to core path algorithms under zero ambient authority.
+//
+// Beats:
+//   1. Handle MCP initialize handshake with server metadata and capability declarations.
+//   2. Expose tools/list catalogue with five sovereign dirname tools.
+//   3. Dispatch tools/call for resolve, batch, ancestors, split, and demo.
+//   4. Deliver streaming JSON-RPC responses over standard output.
+
+import "path/dirname_posix.oo";
+import "path/dirname_split.oo";
+import "path/dirname_ancestors.oo";
+import "render/render_plain.oo";
+import "render/synthetic_demo.oo";
+import "ipc/json_field.oo";
+
+fn build_error(id: String, code: Int, msg: String) -> String {
+    return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"error\":{\"code\":"
+        + code.to_string() + ",\"message\":\"" + json_escape(msg) + "\"}}\n";
+}
+
+fn build_tool_result(id: String, text: String) -> String {
+    return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{\"content\":[{\"type\":\"text\",\"text\":\""
+        + json_escape(text) + "\"}]}}\n";
+}
+
+pub fn render_mcp_init(id: String) -> String {
+    return "{\"jsonrpc\":\"2.0\",\"id\":" + id
+        + ",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{}},\"serverInfo\":{\"name\":\"oodirname\",\"version\":\"0.2.0\"}}}\n";
+}
+
+pub fn render_mcp_tools_list(id: String) -> String {
+    let mut out: String = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{\"tools\":[";
+    out = out + "{\"name\":\"dirname_resolve\",\"description\":\"Extract parent directory portion from path string according to POSIX standard.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}";
+    out = out + ",{\"name\":\"dirname_batch\",\"description\":\"Extract parent directories for multiple path strings simultaneously.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"paths\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}},\"required\":[\"paths\"]}}";
+    out = out + ",{\"name\":\"dirname_ancestors\",\"description\":\"Trace full ancestor directory chain from path to root boundary or relative dot.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}";
+    out = out + ",{\"name\":\"dirname_split\",\"description\":\"Split path into dirname and basename components.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"path\":{\"type\":\"string\"}},\"required\":[\"path\"]}}";
+    out = out + ",{\"name\":\"dirname_demo\",\"description\":\"Run synthetic demonstration of POSIX dirname edge cases.\",\"inputSchema\":{\"type\":\"object\",\"properties\":{\"json_mode\":{\"type\":\"boolean\"}}}}";
+    out = out + "]}}\n";
+    return out;
+}
+
+pub fn handle_mcp_call(
+    id: String,
+    tool_name: String,
+    req: String
+) -> String {
+    if tool_name == "dirname_demo" {
+        let json_mode: Bool = json_extract_bool_field(req, "json_mode", false);
+        return build_tool_result(id, run_synthetic_demo(json_mode));
+    }
+
+    if tool_name == "dirname_resolve" {
+        let path: String = json_extract_str_field(req, "path");
+        let parent: String = posix_dirname(path);
+        return build_tool_result(id, parent);
+    }
+
+    if tool_name == "dirname_batch" {
+        let paths: List[String] = json_extract_str_list(req, "paths");
+        let res: String = format_dirname_output(paths, false);
+        return build_tool_result(id, res);
+    }
+
+    if tool_name == "dirname_ancestors" {
+        let path: String = json_extract_str_field(req, "path");
+        let chain: List[String] = compute_ancestor_chain(path);
+        let n: Int = list_len(chain);
+        let mut out: String = "";
+        let mut i: Int = 0;
+        while i < n {
+            out = out + list_get(chain, i) + "\n";
+            i = i + 1;
+        }
+        return build_tool_result(id, out);
+    }
+
+    if tool_name == "dirname_split" {
+        let path: String = json_extract_str_field(req, "path");
+        let comps: PathComponents = split_path_components(path);
+        let json: String = "{\"dir\":\"" + json_escape(comps.dir) + "\",\"base\":\"" + json_escape(comps.base) + "\"}";
+        return build_tool_result(id, json);
+    }
+
+    return build_error(id, -32601, "Method or tool not found: " + tool_name);
+}
+
+pub fn handle_mcp_message(req: String) -> String {
+    let id_str: String = json_extract_str_field(req, "id");
+    let id_int: Int = json_extract_int_field(req, "id", -1);
+    let id: String = if chars_len(id_str) > 0 {
+        "\"" + id_str + "\""
+    } else if id_int >= 0 {
+        id_int.to_string()
+    } else {
+        "1"
+    };
+    let method: String = json_extract_str_field(req, "method");
+
+    if method == "initialize" {
+        return render_mcp_init(id);
+    }
+    if method == "notifications/initialized" {
+        return "";
+    }
+    if method == "tools/list" {
+        return render_mcp_tools_list(id);
+    }
+    if method == "tools/call" {
+        let tool_name: String = json_extract_str_field(req, "name");
+        return handle_mcp_call(id, tool_name, req);
+    }
+    if method == "shutdown" {
+        return "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":null}\n";
+    }
+    return build_error(id, -32601, "Method not found: " + method);
+}
+
+fn find_newline_pos(s: String) -> Int {
+    let n: Int = chars_len(s);
+    let mut i: Int = 0;
+    while i < n {
+        if byte_at(s, i) == 10 {
+            return i;
+        }
+        i = i + 1;
+    }
+    return -1;
+}
+
+pub fn run_mcp_server(fr: &FsReadCap) {
+    let mut buf: String = "";
+    let mut running: Bool = true;
+    while running {
+        let r: Result[String, String] = oo_read_stdin_chunk(fr, 4096);
+        if !r.is_ok() {
+            running = false;
+        } else {
+            let chunk: String = match r { Ok(s) => s, Err(_) => "" };
+            if chars_len(chunk) == 0 {
+                running = false;
+            } else {
+                buf = buf + chunk;
+                let mut nl_pos: Int = find_newline_pos(buf);
+                while nl_pos >= 0 {
+                    let line: String = str_slice(buf, 0, nl_pos);
+                    buf = str_slice(buf, nl_pos + 1, chars_len(buf));
+                    let trimmed: String = str_trim(line);
+                    if chars_len(trimmed) > 0 {
+                        let resp: String = handle_mcp_message(trimmed);
+                        if chars_len(resp) > 0 {
+                            print(resp);
+                        }
+                    }
+                    nl_pos = find_newline_pos(buf);
+                }
+            }
+        }
+    }
+}
+

@@ -26,7 +26,7 @@ Written in 100% pure [openOODA](https://github.com/openOODA).
 
 ### Automated Installer (Linux x86_64 & aarch64)
 ```bash
-curl -fsSL https://openooda-tools.github.io/oodirname/install.sh | bash
+curl -fsSL https://openOODA-tools.github.io/oodirname/install.sh | bash
 ```
 
 ### Native Package Managers
@@ -37,16 +37,16 @@ yay -S oodirname-bin
 cd packaging/arch && makepkg -si
 
 # Debian / Ubuntu (.deb)
-curl -fsSL https://openooda-tools.github.io/oodirname/install.sh | bash -s -- --deb
+curl -fsSL https://openOODA-tools.github.io/oodirname/install.sh | bash -s -- --deb
 
 # Fedora / RHEL (.rpm)
-curl -fsSL https://openooda-tools.github.io/oodirname/install.sh | bash -s -- --rpm
+curl -fsSL https://openOODA-tools.github.io/oodirname/install.sh | bash -s -- --rpm
 ```
 
 ### Uninstallation
 ```bash
 oodirname-uninstall
-# or: curl -fsSL https://openooda-tools.github.io/oodirname/uninstall.sh | bash
+# or: curl -fsSL https://openOODA-tools.github.io/oodirname/uninstall.sh | bash
 ```
 
 ---
@@ -54,17 +54,20 @@ oodirname-uninstall
 ## 2. CLI Usage
 
 ```
-usage: oodirname [options] [ARGUMENTS]...
+usage: oodirname [options] NAME...
 
 Extracts parent directory portion from path strings adhering to POSIX standards.
 
 Options:
-  -h, --help           display this help and exit
-  -v, --version        output version information and exit
-      --json           output formatted as JSON Lines
+  -z, --zero           end each output line with NUL, not newline
+  -j, --json           output formatted as JSON Lines
+  -D, --demo           synthetic POSIX dirname demonstration showcase
       --color <WHEN>   colorize output: auto, always, never [default: auto]
       --theme <NAME>   override active oote palette
       --mcp            run as Model Context Protocol stdio server
+      --test           run internal verification anchor suite
+  -h, --help           display this help and exit
+  -v, --version        output version information and exit
 ```
 
 ---
@@ -80,6 +83,12 @@ Options:
 ## 4. Model Context Protocol (MCP)
 
 When invoked with `--mcp`, `oodirname` runs a JSON-RPC 2.0 stdio server providing structured tools for AI coding agents:
+
+* `dirname_resolve`: Extract parent directory portion from path string according to POSIX standard.
+* `dirname_batch`: Extract parent directories for multiple path strings simultaneously.
+* `dirname_ancestors`: Trace full ancestor directory chain from path to root boundary or relative dot.
+* `dirname_split`: Split path into dirname and basename components.
+* `dirname_demo`: Run synthetic demonstration of POSIX dirname edge cases.
 
 ```bash
 oodirname --mcp
